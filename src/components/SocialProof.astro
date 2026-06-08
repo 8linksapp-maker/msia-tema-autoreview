@@ -8,10 +8,16 @@ const stats = d.stats || [
   { number: 'R$2M', suffix: '+', label: 'Economia Gerada', detail: 'Para nossos leitores' },
 ];
 const brands = d.brands || ['Amazon', 'Hotmart', 'Mercado Livre', 'Shopee', 'Eduzz', 'Monetizze'];
+const brandsLabel = d.brandsLabel ?? 'Avaliamos produtos das maiores plataformas';
+const showStats = Array.isArray(stats) && stats.length > 0;
+const showBrands = (Array.isArray(brands) && brands.length > 0) || !!brandsLabel;
+const showSection = showStats || showBrands;
 ---
 
+{showSection && (
 <section class="social-proof">
   <div class="container">
+    {showStats && (
     <div class="proof-stats stagger-children animate-on-scroll">
       {stats.map((stat) => (
         <div class="proof-stat">
@@ -23,18 +29,22 @@ const brands = d.brands || ['Amazon', 'Hotmart', 'Mercado Livre', 'Shopee', 'Edu
         </div>
       ))}
     </div>
+    )}
 
+    {showBrands && (
     <div class="proof-brands animate-on-scroll">
       <div class="proof-brands-line"></div>
-      <p class="proof-brands-label">Avaliamos produtos das maiores plataformas</p>
+      {brandsLabel && <p class="proof-brands-label">{brandsLabel}</p>}
       <div class="proof-brands-list">
         {brands.map((brand) => (
           <span class="proof-brand">{brand}</span>
         ))}
       </div>
     </div>
+    )}
   </div>
 </section>
+)}
 
 <style>
   .social-proof {
