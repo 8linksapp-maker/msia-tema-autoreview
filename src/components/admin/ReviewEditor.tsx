@@ -147,7 +147,132 @@ function buildMarkdown(d: ReviewData): string {
     return fm.join('\n') + '\n\n' + body + '\n';
 }
 
-export default function ReviewEditor() {
+/**
+ * Parse o markdown gerado pelo buildMarkdown de volta pra ReviewData.
+ * Resiliente: se o arquivo foi editado manualmente e tem campos faltando,
+ * preenche com defaults. Falha gracioso (retorna null) se não conseguir
+ * extrair nem o título.
+ */
+function parseMarkdown(md: string): ReviewData | null {
+    const fmMatch = md.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+    if (!fmMatch) return null;
+    const [, fm, bodyRaw] = fmMatch;
+
+    const data: ReviewData = JSON.parse(JSON.stringify(emptyData));
+    data.products = [];
+    data.faqs = [];
+
+    const unq = (s: string) => s.replace(/^["']|["']$/g, '').replace(/\\"/g, '"');
+    const lines = fm.split('\n');
+    let i = 0;
+    while (i < lines.length) {
+        const line = lines[i];
+        const flatMatch = line.match(/^(title|description|pubDate|image|imageAlt|category|badge|priceRange|seoTitle|seoDescription):\s*(.*)$/);
+        if (flatMatch) {
+            (data as any)[flatMatch[1]] = unq(flatMatch[2].trim());
+            i++; continue;
+        }
+        const numMatch = line.match(/^(rating):\s*(.+)$/);
+        if (numMatch) {
+            data.rating = parseFloat(numMatch[2]);
+            i++; continue;
+        }
+        const boolMatch = line.match(/^(draft):\s*(true|false)$/);
+        if (boolMatch) {
+            data.draft = boolMatch[2] === 'true';
+            i++; continue;
+        }
+        // conclusion: | (multi-linha)
+        if (/^conclusion:\s*\|\s*$/.test(line)) {
+            i++;
+            const chunks: string[] = [];
+            while (i < lines.length && (lines[i].startsWith('  ') || lines[i] === '')) {
+                chunks.push(lines[i].replace(/^ {2}/, ''));
+                i++;
+            }
+            data.conclusion = chunks.join('\n').replace(/\n+$/, '');
+            continue;
+        }
+        // products:
+        if (/^products:\s*$/.test(line)) {
+            i++;
+            while (i < lines.length && lines[i].startsWith('  - ')) {
+                const p: Product = JSON.parse(JSON.stringify(emptyProduct));
+                p.pros = []; p.cons = [];
+                while (i < lines.length && (lines[i].startsWith('  - ') || lines[i].startsWith('    '))) {
+                    const pl = lines[i];
+                    const itemFlat = pl.match(/^ {2,4}-?\s*(name|price|originalPrice|store|image|affiliateLink|badge):\s*(.*)$/);
+                    if (itemFlat) {
+                        (p as any)[itemFlat[1]] = unq(itemFlat[2].trim());
+                        i++; continue;
+                    }
+                    const itemNum = pl.match(/^ {4}(rating):\s*(.+)$/);
+                    if (itemNum) { p.rating = parseFloat(itemNum[2]); i++; continue; }
+                    const itemBool = pl.match(/^ {4}(featured):\s*(true|false)$/);
+                    if (itemBool) { p.featured = itemBool[2] === 'true'; i++; continue; }
+                    // review: | (indented 4) com texto a 6 espaços
+                    if (/^ {4}review:\s*\|\s*$/.test(pl)) {
+                        i++;
+                        const rl: string[] = [];
+                        while (i < lines.length && (lines[i].startsWith('      ') || lines[i] === '')) {
+                            rl.push(lines[i].replace(/^ {6}/, ''));
+                            i++;
+                        }
+                        p.review = rl.join('\n').replace(/\n+$/, '');
+                        continue;
+                    }
+                    // pros: / cons: arrays
+                    const arrM = pl.match(/^ {4}(pros|cons):\s*$/);
+                    if (arrM) {
+                        i++;
+                        while (i < lines.length && /^ {6}- /.test(lines[i])) {
+                            const v = unq(lines[i].replace(/^ {6}- /, '').trim());
+                            (p as any)[arrM[1]].push(v);
+                            i++;
+                        }
+                        continue;
+                    }
+                    // outro indent fora do padrão — pula
+                    i++;
+                }
+                if (p.pros.length === 0) p.pros = [''];
+                if (p.cons.length === 0) p.cons = [''];
+                data.products.push(p);
+            }
+            continue;
+        }
+        // faqs:
+        if (/^faqs:\s*$/.test(line)) {
+            i++;
+            while (i < lines.length && /^ {2}- q:/.test(lines[i])) {
+                const qm = lines[i].match(/^ {2}- q:\s*(.*)$/);
+                i++;
+                let a = '';
+                if (i < lines.length && /^ {4}a:/.test(lines[i])) {
+                    a = unq((lines[i].match(/^ {4}a:\s*(.*)$/) || [, ''])[1].trim());
+                    i++;
+                }
+                data.faqs.push({ q: qm ? unq(qm[1].trim()) : '', a });
+            }
+            continue;
+        }
+        i++;
+    }
+
+    if (!data.title) return null;
+    if (data.products.length === 0) data.products = [{ ...emptyProduct, featured: true }];
+    if (data.faqs.length === 0) data.faqs = [{ q: '', a: '' }];
+    data.intro = bodyRaw.trim();
+    data.slug = ''; // será derivado do filePath
+    return data;
+}
+
+interface ReviewEditorProps {
+    filePath?: string | null;
+}
+
+export default function ReviewEditor({ filePath = null }: ReviewEditorProps = {}) {
+    const isEditing = !!filePath;
     const [data, setData] = useState<ReviewData>(emptyData);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -174,6 +299,23 @@ export default function ReviewEditor() {
             })
             .catch(() => setAiConfigured(false));
     }, []);
+
+    // Carrega review existente quando em modo edit
+    useEffect(() => {
+        if (!filePath) return;
+        githubApi('read', filePath)
+            .then(res => {
+                const parsed = parseMarkdown(res?.content || '');
+                if (!parsed) {
+                    setError('Não consegui ler esse review. O arquivo pode estar corrompido ou ter sido editado manualmente.');
+                    return;
+                }
+                const slugFromPath = filePath.split('/').pop()?.replace(/\.md$/, '') || '';
+                parsed.slug = slugFromPath;
+                setData(parsed);
+            })
+            .catch(err => setError('Erro ao carregar o review: ' + (err.message || 'desconhecido')));
+    }, [filePath]);
 
     const set = (field: keyof ReviewData, value: any) => {
         setData(prev => {
@@ -264,12 +406,15 @@ export default function ReviewEditor() {
             }
         }
         setSaving(true); setError('');
-        triggerToast('Criando review...', 'progress', 30);
+        triggerToast(isEditing ? 'Salvando review...' : 'Criando review...', 'progress', 30);
         try {
             const md = buildMarkdown(data);
-            const path = `src/content/blog/${data.slug}.md`;
-            await githubApi('write', path, { content: md, message: `CMS: Novo review - ${data.title}` });
-            triggerToast('Review criado com sucesso!', 'success', 100);
+            const targetPath = isEditing && filePath ? filePath : `src/content/blog/${data.slug}.md`;
+            await githubApi('write', targetPath, {
+                content: md,
+                message: isEditing ? `CMS: Edição do review ${data.slug}` : `CMS: Novo review - ${data.title}`,
+            });
+            triggerToast(isEditing ? 'Review salvo!' : 'Review criado com sucesso!', 'success', 100);
             setTimeout(() => { window.location.href = '/admin/posts'; }, 800);
         } catch (err: any) {
             setError(err.message); triggerToast(`Erro: ${err.message}`, 'error');
