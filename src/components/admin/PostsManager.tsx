@@ -60,15 +60,17 @@ export default function PostsManager() {
                     if (!fileData) return;
                     const text = fileData.content || '';
                     const match = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-                    let title = f.name, category = 'Geral', author = '', pubDate = '', draft = false, description = '', image = '';
+                    let title = f.name, category = 'Geral', author = '', pubDate = '', draft = false, description = '', image = '', isReview = false;
                     const slug = f.name.replace('.md', '');
                     if (match) {
                         const fm = match[1];
                         const extract = (key: string) => { const m = fm.match(new RegExp(`${key}:\\s*(?:"([^"]*)"|'([^']*)'|([^\\n\\r]+))`)); return m ? (m[1] || m[2] || m[3] || '').trim() : ''; };
                         title = extract('title') || f.name; category = extract('category') || 'Geral'; author = extract('author'); pubDate = extract('pubDate'); draft = extract('draft') === 'true'; description = extract('description'); image = extract('image');
+                        // Detecta review pelo campo `products:` no frontmatter (signature do Gerador de Reviews)
+                        isReview = /^products:\s*$/m.test(fm);
                         if (category) allCategories.add(category);
                     }
-                    enriched.push({ ...f, sha: fileData.sha || f.sha, title, category, author, pubDate, draft, description, image, slug, rawBody: match ? match[2] : text });
+                    enriched.push({ ...f, sha: fileData.sha || f.sha, title, category, author, pubDate, draft, description, image, slug, isReview, rawBody: match ? match[2] : text });
                 }));
 
                 setPosts(enriched);
@@ -237,7 +239,7 @@ export default function PostsManager() {
                                             <td className="py-4 px-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button onClick={() => handleQuickAction(post)} title="Edição Rápida" className="p-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors"><Edit3 className="w-4 h-4" /></button>
-                                                    <a href={`/admin/posts/edit?file=${encodeURIComponent(post.path)}`} title="Editar Completo" className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><FileText className="w-4 h-4" /></a>
+                                                    <a href={post.isReview ? `/admin/reviews/edit?file=${encodeURIComponent(post.path)}` : `/admin/posts/edit?file=${encodeURIComponent(post.path)}`} title={post.isReview ? 'Editar Review (gerador completo)' : 'Editar Completo'} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><FileText className="w-4 h-4" /></a>
                                                     <button onClick={() => handleDelete(post.path, post.sha, post.title)} title="Excluir" className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                                                 </div>
                                             </td>
