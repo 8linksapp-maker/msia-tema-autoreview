@@ -1,0 +1,10 @@
+---
+export const prerender = false;
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import ReviewEditor from '../../../components/admin/ReviewEditor';
+
+const filePath = Astro.url.searchParams.get('file') || '';
+---
+<AdminLayout title="Editar Review" activeSection="reviews">
+    <ReviewEditor client:load filePath={filePath} />
+</AdminLayout>
