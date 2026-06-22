@@ -9,6 +9,10 @@
 export function yamlEscape(value: string | undefined | null): string {
     if (value == null) return '';
     return String(value)
-        .replace(/\\/g, '\\\\')   // barras invertidas primeiro
-        .replace(/"/g, '\\"');    // depois as aspas duplas
+        .replace(/\\/g, '\\\\')      // barras invertidas primeiro
+        .replace(/"/g, '\\"')        // depois as aspas duplas
+        .replace(/[\r\n]+/g, ' ')    // quebras de linha viram espaco (YAML duplo-quote nao aceita newline cru)
+        .replace(/\t/g, ' ')         // tabs viram espaco
+        .replace(/\s+/g, ' ')        // colapsa espacos repetidos
+        .trim();
 }

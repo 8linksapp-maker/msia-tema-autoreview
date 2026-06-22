@@ -10,6 +10,8 @@
  *   - postPath(): caminho do arquivo de um post
  */
 
+import { yamlEscape } from '../lib/yamlEscape';
+
 export interface PostData {
     title: string;
     slug: string;
@@ -33,12 +35,12 @@ export const config = {
  * Mesmo formato gerado pelo PostEditor.tsx:130.
  */
 export function serializePost(post: PostData): string {
-    const title = post.title.replace(/"/g, '\\"');
-    const description = (post.description || '').replace(/"/g, '\\"');
-    const pubDate = post.pubDate || new Date().toISOString().split('T')[0];
-    const image = post.image || '';
-    const category = post.category || '';
-    const author = post.author || '';
+    const title = yamlEscape(post.title);
+    const description = yamlEscape(post.description);
+    const pubDate = yamlEscape(post.pubDate || new Date().toISOString().split('T')[0]);
+    const image = yamlEscape(post.image);
+    const category = yamlEscape(post.category);
+    const author = yamlEscape(post.author);
     const draft = post.draft ?? false;
 
     return `---\ntitle: "${title}"\ndescription: "${description}"\npubDate: "${pubDate}"\nimage: "${image}"\ncategory: "${category}"\nauthor: "${author}"\ndraft: ${draft}\n---\n${post.content}`;
