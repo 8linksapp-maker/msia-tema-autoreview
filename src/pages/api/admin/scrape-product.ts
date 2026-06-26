@@ -104,13 +104,24 @@ export const POST: APIRoute = async ({ request }) => {
         }
 
         // Re-detect via URL final (apos redirects) para garantir que o scraper certo seja usado
-        const finalStore = detectStore(res.url || url);
+        const finalUrl = res.url || url;
+        const finalStore = detectStore(finalUrl);
         if (finalStore !== 'outro') store = finalStore;
+
+        // Mercado Livre redireciona requisições de servidor (IP de datacenter) para uma
+        // página de "account-verification" (parede anti-robô, HTTP 200) em vez do produto.
+        // Detectar pela URL final evita devolver o erro genérico enganoso de "layout mudou".
+        if (/account-verification/i.test(finalUrl)) {
+            return new Response(JSON.stringify({ error: 'O Mercado Livre bloqueou a importação automática (verificação anti-robô do servidor). Preencha nome, preço e imagem manualmente — o link de afiliado continua funcionando normalmente.' }), { status: 502 });
+        }
 
         const html = await res.text();
 
-        if (html.length < 5000 || html.toLowerCase().includes('captcha') || html.toLowerCase().includes('robot check')) {
-            return new Response(JSON.stringify({ error: 'A loja bloqueou a requisição (captcha/anti-bot). Preencha manualmente.' }), { status: 502 });
+        if (html.length < 5000 || html.toLowerCase().includes('captcha') || html.toLowerCase().includes('robot check') || html.toLowerCase().includes('account-verification')) {
+            const lojaMsg = store === 'mercado-livre'
+                ? 'O Mercado Livre bloqueou a importação automática (verificação anti-robô do servidor). Preencha nome, preço e imagem manualmente — o link de afiliado continua funcionando normalmente.'
+                : 'A loja bloqueou a requisição (captcha/anti-bot). Preencha manualmente.';
+            return new Response(JSON.stringify({ error: lojaMsg }), { status: 502 });
         }
 
         let data;
@@ -120,7 +131,10 @@ export const POST: APIRoute = async ({ request }) => {
         else throw new Error('Store não suportada');
 
         if (!data.name) {
-            return new Response(JSON.stringify({ error: 'Não foi possível extrair o nome do produto. A página pode ter mudado de layout.' }), { status: 500 });
+            const motivo = store === 'mercado-livre'
+                ? 'Não foi possível extrair os dados do produto no Mercado Livre — provavelmente a verificação anti-robô do servidor. Preencha nome, preço e imagem manualmente; o link de afiliado continua válido.'
+                : 'Não foi possível extrair o nome do produto. A página pode ter mudado de layout.';
+            return new Response(JSON.stringify({ error: motivo }), { status: 500 });
         }
 
         return new Response(JSON.stringify({ ok: true, data: { ...data, affiliateLink: url } }), {
