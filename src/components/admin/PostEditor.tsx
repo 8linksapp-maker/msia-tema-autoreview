@@ -6,7 +6,6 @@ import { githubApi } from '../../lib/adminApi';
 import { yamlEscape } from '../../lib/yamlEscape';
 import { normalizeCategories } from '../../lib/categorySlug';
 import { parseVideoUrl } from '../../lib/videoEmbed';
-import SEOScoreWidget from '../../plugins/seo/SEOScoreWidget';
 
 interface PostEditorProps {
     filePath: string | null; // null = novo post
@@ -336,14 +335,6 @@ export default function PostEditor({ filePath }: PostEditorProps) {
                         </label>
                         {pendingUploads['image'] && <span className="text-[10px] text-amber-600 font-bold block mt-2">Upload pendente — será enviado ao salvar</span>}
                     </div>
-
-                    {/* SEO Score Widget */}
-                    <SEOScoreWidget
-                        title={post.title}
-                        description={post.description}
-                        image={post.image}
-                        content={post.content}
-                    />
                 </div>
             </div>
         </div>
