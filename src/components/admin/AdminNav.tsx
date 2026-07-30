@@ -3,7 +3,7 @@ import {
     LayoutDashboard, FileText, Tag, Users, Home, Info, Phone,
     Shield, Settings, LogOut, ChevronRight, ExternalLink, Navigation,
     Sparkles, Package, Layout, Star, AlertTriangle, Wand2,
-} from 'lucide-react';
+} Code2, from 'lucide-react';
 import { githubApi } from '../../lib/adminApi';
 
 interface NavItem {
@@ -34,6 +34,7 @@ const pageItems: NavItem[] = [
 const pluginItems: NavItem[] = [
     { label: 'Plugins', href: '/admin/plugins', icon: Sparkles, section: 'plugins' },
     { label: 'Google Tag', href: '/admin/google-tag', icon: Tag, section: 'google-tag' },
+    { label: 'Codigo Personalizado', href: '/admin/custom-code', icon: Code2, section: 'custom-code' },
 ];
 
 interface AdminNavProps {

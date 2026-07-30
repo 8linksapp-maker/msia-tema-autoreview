@@ -146,8 +146,8 @@ const breadcrumbSchema = breadcrumbs.length > 0 ? {
     item: new URL(crumb.url, Astro.site).toString(),
   })),
 } : null;
+import CustomCodeBodyStart from '../plugins/custom-code/CustomCodeBodyStart.astro';
 ---
-
 <!doctype html>
 <html lang="pt-BR">
   <head>
@@ -224,6 +224,7 @@ const breadcrumbSchema = breadcrumbs.length > 0 ? {
     ))}
   </head>
   <body class="grain">
+<CustomCodeBodyStart />
     <Navbar />
     <main>
       <slot />
