@@ -199,7 +199,7 @@ function parseMarkdown(md: string): ReviewData | null {
             while (i < lines.length && lines[i].startsWith('  - ')) {
                 const p: Product = JSON.parse(JSON.stringify(emptyProduct));
                 p.pros = []; p.cons = [];
-                while (i < lines.length && (lines[i].startsWith('  - ') || lines[i].startsWith('    '))) {
+                while (i < lines.length && lines[i].startsWith('    ')) {
                     const pl = lines[i];
                     const itemFlat = pl.match(/^ {2,4}-?\s*(name|price|originalPrice|store|image|affiliateLink|badge):\s*(.*)$/);
                     if (itemFlat) {
