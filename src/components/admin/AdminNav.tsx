@@ -3,7 +3,8 @@ import {
     LayoutDashboard, FileText, Tag, Users, Home, Info, Phone,
     Shield, Settings, LogOut, ChevronRight, ExternalLink, Navigation,
     Sparkles, Package, Layout, Star, AlertTriangle, Wand2,
-} Code2, from 'lucide-react';
+    Code2,
+} from 'lucide-react';
 import { githubApi } from '../../lib/adminApi';
 
 interface NavItem {
