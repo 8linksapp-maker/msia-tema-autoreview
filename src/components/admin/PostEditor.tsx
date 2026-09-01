@@ -85,7 +85,8 @@ export default function PostEditor({ filePath }: PostEditorProps) {
                         const fm = match[1];
                         const body = match[2].trim();
                         const extract = (key: string) => { const m = fm.match(new RegExp(`${key}:\\s*(?:"([^"]*)"|'([^']*)'|(.*))`)); return m ? (m[1] || m[2] || m[3] || '').trim() : ''; };
-                        const parsedHtml = await marked.parse(body);
+                        const isHtml = /^\s*<[a-z][\s\S]*>/i.test(body);
+                        const parsedHtml = isHtml ? body : await marked.parse(body);
                         setPost({
                             title: extract('title'), slug: filePath.split('/').pop()?.replace('.md', '') || '',
                             description: extract('description'), pubDate: extract('pubDate') ? formatDateForInput(extract('pubDate')) : new Date().toISOString().split('T')[0],
