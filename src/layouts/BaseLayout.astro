@@ -3,6 +3,7 @@ import '../styles/global.css';
 import Navbar from '../components/Navbar.astro';
 import Footer from '../components/Footer.astro';
 import { readData } from '../lib/readData';
+import HeadPlugins from '../plugins/_slots/HeadPlugins.astro';
 
 interface Product {
   name: string;
@@ -222,6 +223,9 @@ import CustomCodeBodyStart from '../plugins/custom-code/CustomCodeBodyStart.astr
     {productSchemas.map((schema) => (
       <script type="application/ld+json" set:html={JSON.stringify(schema)} />
     ))}
+
+    <!-- Plugins de head: Google Tag, Meta Pixel, AdSense (configurados no painel) -->
+    <HeadPlugins />
   </head>
   <body class="grain">
 <CustomCodeBodyStart />
